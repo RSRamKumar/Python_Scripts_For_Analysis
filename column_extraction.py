@@ -11,4 +11,4 @@ a_df =  pd.read_excel("filename.xlsx",sheet_name="sheetname")
 b_df=a_df.iloc[:, np.r_[0,8,9,48:51,56:123]]
 b_df.fillna("NA",inplace=True) # replacing empty value with NA value
 print(b_df.isna().sum())  # printing the empty NaN values for each columns
-b_df.to_csv('longitudinal_data.csv',index=False)
+b_df.to_csv('output_data.csv',index=False)
