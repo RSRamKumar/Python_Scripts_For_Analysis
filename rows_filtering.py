@@ -35,7 +35,7 @@ for index, row in imaging_data_df.iterrows():
         isinstance(row["col_b"],float) or \
         isinstance(row["col_c"], float) or \
         isinstance(row["col_d"], float) or \
-        isinstance(row["ct_scan_ground_class"], float):
+        isinstance(row["col_e"], float):
         f.write("{},{},{},{},{},{},{}\n".format(row['id'], row['days_n'],
                                           row['col_a'],
                                           row['col_b'],
@@ -43,6 +43,7 @@ for index, row in imaging_data_df.iterrows():
                                           row['col_d'],
                                           row['col_e']))
 
-
+        
+# conversion of csv file into a json file
 metadata_df = pd.read_csv("meta_data_filled.csv")
 metadata_df.to_json ("meta_data.json", orient='records',indent=4)
