@@ -1,28 +1,27 @@
 """
 The input file contains the patient id only for the first row and it has to be
 extended till it sees the next patient id.
-input: sample_data.csv
-patient_id,age,gender
-1,23,1
-,23,1
-,23,1
-2,25,2
-,25,2
-,25,2
-,25,2
-,25,2
+input: sample_data.csv [Got some missing values too]
+patient_id,age,gender,measurement_1,measurement_2
+1,23,1,2,4
+,23,1,3,5
+,23,1,,3
+2,25,2,1,4
+,25,2,2,
+,25,2,4,4
+,25,2,,2
+,25,2,1,6
 
 output: id_filled_file_sample.csv
-patient_id,age,gender
-1.0,23,1
-1.0,23,1
-1.0,23,1
-2.0,25,2
-2.0,25,2
-2.0,25,2
-2.0,25,2
-2.0,25,2
-
+patient_id,age,gender,measurement_1,measurement_2
+1.0,23,1,2.0,4.0
+1.0,23,1,3.0,5.0
+1.0,23,1,,3.0
+2.0,25,2,1.0,4.0
+2.0,25,2,2.0,
+2.0,25,2,4.0,4.0
+2.0,25,2,,2.0
+2.0,25,2,1.0,6.0
 """
 
 import pandas as pd
