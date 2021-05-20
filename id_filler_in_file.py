@@ -45,3 +45,5 @@ assert patient_id_index == id_present_index
 df.to_csv("id_filled_file_sample.csv",index=False)
 
 #https://stackoverflow.com/questions/23330654/update-a-dataframe-in-pandas-while-iterating-row-by-row
+
+# simple technique : use reset index as shown in https://stackoverflow.com/questions/20461165/how-to-convert-index-of-a-pandas-dataframe-into-a-column
