@@ -6,6 +6,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand
 from django.db import transaction
+import urllib
 
 from variantmanagement.variantdata.models import *
 from variantmanagement.variantdata.utils import get_vep_data_by_hgvs
@@ -22,7 +23,7 @@ logging.basicConfig(filename=log_file_path,
                     format = '%(asctime)s -%(name)s - %(levelname)s -%(message)s',
                     level = logging.DEBUG,  force = True )
 
-def retry(func, retry = 3):
+def retry(func, retry = 2):
     """
     wrapper function for retrying an API request
     :param func:
@@ -61,30 +62,14 @@ def assembly_converter(chromosome, start_pos, stop_pos):
     #print(r.raise_for_status())
     response = r.json()['mappings']
 
-    if len(response) == 0:
-        return 'Ensembl has no mapping for this coordinates'
-    elif len(response) == 1:
+    if len(response) == 0: #'Ensembl has no mapping for this coordinates'
+        return None, None
+    elif len(response) == 1: # clear ones
         mapped = response[0]['mapped']
         return mapped['start'], mapped['end']
-    else:
-        return 'Ensembl has no clear response for this coordinates'
+    else: # 'Ensembl has no clear response for this coordinates'
+        return None, None
 
-# to be removed
-def vcf_string_extractor(hgvs_genomic_hg38_id):
-    """
-    function for pulling vcf_string for hgvs38 variant using VEP API
-    :param hgvs_genomic_hg38_id: hgvs_genomic_hg38 obtained from previous hgvs_converter function
-    :return: vcf_string for hg38 coordinates
-    """
-    api_url = "https://rest.ensembl.org/vep/human/hgvs/{}?vcf_string=1".format(hgvs_genomic_hg38_id)
-
-    response = requests.get(api_url, headers={"Content-Type": "application/json"})
-
-    try:
-        vcf_string = response.json()[0].get('vcf_string', None)
-        return vcf_string
-    except Exception:
-        return 'Unable to obtain vcf_string or invalid hgvs identifier'
 
 @retry
 def get_hgvs_hg38(hgvs_id):
@@ -119,8 +104,8 @@ def get_hgvs_hg38(hgvs_id):
 
     def getting_details_for_grch37(hgvs_id):
         response = requests.get(
-            'https://mutalyzer.nl/position-converter?assembly_name_or_alias=GRCh37&description={}'.format(hgvs_id)).text
-        soup = BeautifulSoup(response, "html.parser")
+            'https://mutalyzer.nl/position-converter?assembly_name_or_alias=GRCh37&description={}'.format(hgvs_id))
+        soup = BeautifulSoup(response.text, "html.parser")
         grch37_transcripts = find_transcripts(soup)
         return grch37_transcripts
 
@@ -131,10 +116,11 @@ def get_hgvs_hg38(hgvs_id):
         else:
             hgvs_grch38_id = None
             for trans in grch37_transcripts:
+                trans = urllib.parse.quote(trans)
                 response = requests.get(
                     'https://mutalyzer.nl/position-converter?assembly_name_or_alias=GRCh38&description={}'.format(
-                        trans)).text
-                soup = BeautifulSoup(response, "html.parser")
+                        trans))
+                soup = BeautifulSoup(response.text, "html.parser")
                 hgvs_grch38_id = find_chromosomal_variants(soup)
 
                 if (hgvs_grch38_id != None) :
@@ -151,80 +137,60 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         with transaction.atomic():
 
-
-            # # unique chromosomes
-            # unique_chromosomes = Variantversion.objects.distinct("chromosome_id")
-            # print([i.chromosome.id  for i in unique_chromosomes])
-
-
-            # chr_ = Chromosome.objects.get(referencegenome=2, symbol='X')
-            # print((chr_.get_all_fields()))
-
-
-           #  k = Variantversion.objects.get(variant=999)
-           #  #print(k.get_all_fields_with_values())
-           #  # print(k.chromosome, k.chromosome_id, k.genomic_location_start, k.genomic_location_end, k.variant,
-           #  #       k.variant_id)
-           #  # hg38_coordinates  = assembly_converter(k.chromosome, k.genomic_location_start , k.genomic_location_end)
-           #  hgvs_genomic_hg38_id = get_hgvs_hg38(k.hgvs_genomic)
-           #  #vcf_string_hg38a = vcf_string_extractor(hgvs_genomic_hg38_id)
-           #  vcf_string_hg38  = get_vep_data_by_hgvs(hgvs_genomic_hg38_id, params={'vcf_string':1}).get('vcf_string', None)
-           #  print(vcf_string_hg38)
-           # # print(hgvs_genomic_hg38_id, vcf_string_hg38, hg38_coordinates)
-
-
-
-            # retrieving the variant data, custom code #get_vep_data_by_hgvs(hgvs_genomic_hg38_id, params={'vcf_string':1}).get('vcf_string', None)
+            # retrieving the variant data, custom code
 
             variant_data = Variantversion.objects.all()
             result_list = []
 
+            sex_chr = {23: 'X', 24: 'Y'}
+
             s = requests.Session() # creating a new session
 
-            for var in variant_data [:51] :
+            for var in variant_data[:51] :
 
-                chro_symbol_19 = var.chromosome.get('chromosome_symbol', "empty")
+
+                # changing the chromosomes and linking for foreign key
+                chro_symbol_19 = var.chromosome_id if var.chromosome_id not in sex_chr else sex_chr[var.chromosome_id]
+
                 chr_hg38_for_current_variant_version = Chromosome.objects.get(referencegenome=2, symbol=chro_symbol_19)
 
+
+                # Obtaining results
                 logger.info('***** Variant ID in the process now is {} *********'.format(var))
                 hg38_coordinates  = assembly_converter(var.chromosome, var.genomic_location_start , var.genomic_location_end)
                 hgvs_genomic_hg38_id = get_hgvs_hg38(var.hgvs_genomic)
                 vcf_string_hg38 = get_vep_data_by_hgvs(hgvs_genomic_hg38_id, params={'vcf_string':1}).get('vcf_string', None)
                 logger.info('***** Completed ID is {} *********'.format(var))
 
-                # # hg38 response for each variant
-                # current_vv_hg38 = Variantversion(
-                #     genomic_location_end=hg38_coordinates_dict.get(str(var.genomic_location_end), None) if type(
-                #         hg38_coordinates_dict) == dict else None,
-                #     genomic_location_start=hg38_coordinates_dict.get(str(var.genomic_location_start), None) if type(
-                #         hg38_coordinates_dict) == dict else None,
-                #     hgvs_genomic=hgvs_genomic_hg38_id,
-                #     chromosome=  chr_hg38_for_current_variant_version,
-                #     vcf_string=vcf_string_hg38,
-                #     variant=var.variant)
+
+                # try:
+                #    current_vv_hg38 = Variantversion.objects.get(hgvs_genomic=hgvs_genomic_hg38_id)
+                # except Variantversion.DoesNotExist :
+                #    current_vv_hg38 = Variantversion(
+                #        genomic_location_end=hg38_coordinates[1] if type(hg38_coordinates) == tuple else None,
+                #        genomic_location_start=hg38_coordinates[0] if type(hg38_coordinates) == tuple else None,
+                #        hgvs_genomic=hgvs_genomic_hg38_id,
+                #        chromosome=chr_hg38_for_current_variant_version,
+                #        vcf_string=vcf_string_hg38,
+                #        variant=var.variant)
                 #
                 # current_vv_hg38.save()
-
+                # logger.info('The variant ID {} is saved in the database successfully'.format(current_vv_hg38.id))
 
                 #converting into a dict for writing a csv (for viewing the results)
                 result_dict = {
-                    'id' :var,
-                    'hgvs_genomic' : hgvs_genomic_hg38_id,
-                    'genomic_location_end' : hg38_coordinates[0]  if type(hg38_coordinates)== tuple else None,
-                    'genomic_location_start' :  hg38_coordinates[1]  if type(hg38_coordinates)== tuple else None ,
-                    'vcf_string' : vcf_string_hg38,
-                    'chromosome': var.chromosome
+                    'id': var,
+                    'hgvs_genomic': hgvs_genomic_hg38_id,
+                    'genomic_location_end': hg38_coordinates[0] if type(hg38_coordinates) == tuple else None,
+                    'genomic_location_start': hg38_coordinates[1] if type(hg38_coordinates) == tuple else None,
+                    'vcf_string': vcf_string_hg38,
+                    'chromosome': chr_hg38_for_current_variant_version
 
                 }
                 result_list.append(result_dict)
 
-
-
             df = pd.DataFrame(result_list)
-            df.to_csv('results_hg38d.csv', index=False, na_rep = None)
-
-
-            print(df.head())
+            df.to_csv('results_hg38.csv', index=False, na_rep=None)
 
 
 
@@ -247,19 +213,6 @@ class Command(BaseCommand):
 
 
 
-
-
-
-'''
-# obtaining single data
-            k = Variantversion.objects.get(variant=1473)
-            print(k.get_all_fields_with_values())
-            print(k.chromosome,k.chromosome_id, k.genomic_location_start , k.genomic_location_end, k.variant, k.variant_id)
-            # hg38_coordinates_dict = assembly_converter(k.chromosome, k.genomic_location_start , k.genomic_location_end)
-            # hgvs_genomic_hg38_id = hgvs_converter(k.hgvs_genomic,  hg38_coordinates_dict)
-            # vcf_string_hg38 = vcf_string_extractor(hgvs_genomic_hg38_id)
-            # print(hg38_coordinates_dict) #1047
-'''
 
 
 
