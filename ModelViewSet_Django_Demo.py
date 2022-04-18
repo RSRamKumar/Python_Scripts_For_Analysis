@@ -54,3 +54,4 @@ class VariantTranscriptMetaDataSerializer(serializers.ModelSerializer):
         ]
 
 #https://www.youtube.com/watch?v=ws0jwg1J0BU
+#https://stackoverflow.com/questions/22083090/what-base-name-parameter-do-i-need-in-my-route-to-make-this-django-api-work
