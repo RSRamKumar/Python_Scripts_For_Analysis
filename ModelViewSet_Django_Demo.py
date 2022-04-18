@@ -33,4 +33,24 @@ class GetVariantMetaDataUsingHGVScDNA(viewsets.ModelViewSet):
         return  Response(serializer.data)
  
   
+  
+  
+  
+# urls.py
+router = routers.DefaultRouter()
+router.register("VariantMetaDataUsingHGVScDNA", api.VariantMetaDataUsingHGVScDNAViewSet , basename='Variant_Transcript' )
+
+urlpatterns = ( path("api/v1/", include(router.urls)))
+
+
+# serializers.py
+class VariantTranscriptMetaDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Variant_Transcript
+
+        fields = [
+            'pk',
+         'meta_data'
+        ]
+
 #https://www.youtube.com/watch?v=ws0jwg1J0BU
