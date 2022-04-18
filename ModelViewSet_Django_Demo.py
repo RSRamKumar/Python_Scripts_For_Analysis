@@ -38,7 +38,7 @@ class GetVariantMetaDataUsingHGVScDNA(viewsets.ModelViewSet):
   
 # urls.py
 router = routers.DefaultRouter()
-router.register("VariantMetaDataUsingHGVScDNA", api.VariantMetaDataUsingHGVScDNAViewSet , basename='Variant_Transcript' )
+router.register("VariantMetaDataUsingHGVScDNA", api.VariantMetaDataUsingHGVScDNAViewSet , basename='GetVariantMetaDataUsingHGVScDNA' )
 
 urlpatterns = ( path("api/v1/", include(router.urls)))
 
