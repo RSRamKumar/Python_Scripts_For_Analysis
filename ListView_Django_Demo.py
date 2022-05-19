@@ -32,7 +32,7 @@ class VariantsWithOldReviewDate(generic.ListView):
 
 
 
-
+#https://fedingo.com/django-get-unique-values-from-queryset/
 
 
 
